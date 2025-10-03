@@ -154,7 +154,7 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
     
     try {
       setHistoryLoading(true)
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'}/api/comments/conversation-history/task/${taskId}`, {
+      const response = await fetch(`${import.meta.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'}/api/comments/conversation-history/task/${taskId}`, {
         headers: {
           'Authorization': `Bearer ${tokens.access_token}`,
           'Content-Type': 'application/json'
