@@ -46,9 +46,10 @@ async def create_comment(
         # Check if entity exists
         entity = await entity_collection.find_one({"id": comment_data.entity_id})
         if not entity:
+            entity_type_str = comment_data.entity_type.value if hasattr(comment_data.entity_type, 'value') else str(comment_data.entity_type)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"{comment_data.entity_type.value.title()} not found"
+                detail=f"{entity_type_str.title()} not found"
             )
         
         # Create comment with ID and timestamps
