@@ -148,6 +148,66 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
 
   const emojis = ['👍', '👎', '❤️', '😄', '😮', '😢', '😡', '🎉', '🚀', '👀']
 
+  // Fetch conversation history
+  const fetchConversationHistory = async () => {
+    if (!taskId || !tokens?.access_token) return
+    
+    try {
+      setHistoryLoading(true)
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'}/api/comments/conversation-history/task/${taskId}`, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setConversationHistory(data)
+      }
+    } catch (error) {
+      console.error('Error fetching conversation history:', error)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  // Load conversation history when switching to history view
+  useEffect(() => {
+    if (activeView === 'history' && !conversationHistory) {
+      fetchConversationHistory()
+    }
+  }, [activeView, taskId])
+
+  // Helper function to format time in industry-standard way
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const messageTime = new Date(timestamp)
+    const diffInMs = now.getTime() - messageTime.getTime()
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+    const diffInHours = Math.floor(diffInMinutes / 60)
+    const diffInDays = Math.floor(diffInHours / 24)
+    
+    if (diffInMinutes < 1) return 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInHours < 24) return `${diffInHours}h ago`
+    if (diffInDays < 7) return `${diffInDays}d ago`
+    return messageTime.toLocaleDateString()
+  }
+
+  const formatFullTime = (timestamp: string) => {
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
   return (
     <div className="p-6">
       {/* Enhanced Comments Header */}
