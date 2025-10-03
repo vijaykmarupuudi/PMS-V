@@ -5,6 +5,7 @@ import {
   Plus, Send, Filter, Search, Users, Calendar,
   Eye, Archive, MoreVertical, Edit, Trash2, ExternalLink
 } from 'lucide-react'
+import { getApiUrlDynamic } from '../../utils/config'
 
 interface Comment {
   id: string
