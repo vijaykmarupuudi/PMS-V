@@ -635,6 +635,10 @@ def clean_task_data(task_data: dict) -> dict:
     """Clean task data to fix validation issues"""
     cleaned_task = dict(task_data)
     
+    # Remove MongoDB ObjectId which is not JSON serializable
+    if "_id" in cleaned_task:
+        del cleaned_task["_id"]
+    
     # Fix dependencies format - convert strings to proper TaskDependency format
     if "dependencies" in cleaned_task and cleaned_task["dependencies"]:
         fixed_dependencies = []
@@ -668,6 +672,12 @@ def clean_task_data(task_data: dict) -> dict:
     cleaned_task.setdefault("subtask_count", 0)
     cleaned_task.setdefault("comment_count", 0)
     cleaned_task.setdefault("attachment_count", 0)
+    cleaned_task.setdefault("dependencies", [])
+    cleaned_task.setdefault("subtasks", [])
+    cleaned_task.setdefault("tags", [])
+    cleaned_task.setdefault("labels", [])
+    cleaned_task.setdefault("custom_fields", {})
+    cleaned_task.setdefault("assignee_ids", [])
     
     return cleaned_task
 
