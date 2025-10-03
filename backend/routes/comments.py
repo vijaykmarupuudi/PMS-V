@@ -149,7 +149,7 @@ async def get_comments(
             comment_summaries.append(CommentSummary(
                 id=comment["id"],
                 content=comment["content"],
-                type=CommentType(comment["type"]),
+                type=CommentType(comment.get("type", "comment")),  # Default to "comment" if type is missing
                 entity_type=EntityType(comment["entity_type"]),
                 entity_id=comment["entity_id"],
                 author_id=comment["author_id"],
