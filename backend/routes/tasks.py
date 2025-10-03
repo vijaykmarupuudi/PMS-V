@@ -960,6 +960,233 @@ async def get_task_analytics(
             detail=f"Failed to get task analytics: {str(e)}"
         )
 
+# Timer Management Endpoints
+
+@router.post("/{task_id}/timer/start", response_model=Dict[str, Any])
+async def start_timer(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Start timer for a task"""
+    try:
+        db = await get_database()
+        
+        # Check if task exists
+        task = await db.tasks.find_one({"id": task_id})
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        # Stop any existing timer for this user
+        await db.timers.delete_many({"user_id": current_user.id})
+        
+        # Create new timer entry
+        timer_entry = {
+            "id": str(uuid.uuid4()),
+            "task_id": task_id,
+            "user_id": current_user.id,
+            "start_time": datetime.utcnow(),
+            "is_active": True,
+            "created_at": datetime.utcnow()
+        }
+        
+        await db.timers.insert_one(timer_entry)
+        
+        # Log activity
+        await log_task_activity(
+            db, task_id, current_user.id, "timer_started", {}
+        )
+        
+        return {
+            "success": True,
+            "message": "Timer started successfully",
+            "timer": {
+                "id": timer_entry["id"],
+                "task_id": task_id,
+                "start_time": timer_entry["start_time"].isoformat(),
+                "is_active": True
+            }
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start timer: {str(e)}"
+        )
+
+@router.post("/{task_id}/timer/stop", response_model=Dict[str, Any])
+async def stop_timer(
+    task_id: str,
+    auto_log: bool = Query(default=True, description="Automatically log the time entry"),
+    description: Optional[str] = Query(None, description="Description for the time entry"),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Stop timer for a task and optionally log time"""
+    try:
+        db = await get_database()
+        
+        # Check if task exists
+        task = await db.tasks.find_one({"id": task_id})
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        # Find active timer for this user and task
+        timer = await db.timers.find_one({
+            "task_id": task_id,
+            "user_id": current_user.id,
+            "is_active": True
+        })
+        
+        if not timer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active timer found for this task"
+            )
+        
+        # Calculate elapsed time
+        end_time = datetime.utcnow()
+        start_time = timer["start_time"]
+        elapsed_seconds = (end_time - start_time).total_seconds()
+        elapsed_hours = elapsed_seconds / 3600
+        
+        # Update timer as stopped
+        await db.timers.update_one(
+            {"id": timer["id"]},
+            {
+                "$set": {
+                    "end_time": end_time,
+                    "is_active": False,
+                    "elapsed_seconds": elapsed_seconds,
+                    "elapsed_hours": elapsed_hours
+                }
+            }
+        )
+        
+        response_data = {
+            "success": True,
+            "message": "Timer stopped successfully",
+            "timer": {
+                "id": timer["id"],
+                "task_id": task_id,
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "elapsed_seconds": elapsed_seconds,
+                "elapsed_hours": round(elapsed_hours, 4),
+                "is_active": False
+            }
+        }
+        
+        # Auto-log time if requested and session is longer than 1 minute
+        if auto_log and elapsed_seconds >= 60:
+            time_description = description or "Timed work session"
+            
+            # Log the time using the existing time logging logic
+            current_time_tracking = task.get("time_tracking", {})
+            current_actual_hours = current_time_tracking.get("actual_hours", 0.0)
+            current_logged_time = current_time_tracking.get("logged_time", [])
+            
+            time_entry = {
+                "id": str(uuid.uuid4()),
+                "user_id": current_user.id,
+                "hours": round(elapsed_hours, 4),
+                "description": time_description,
+                "date": datetime.utcnow().date().isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "timer_id": timer["id"]  # Link to timer
+            }
+            
+            new_time_tracking = {
+                "estimated_hours": current_time_tracking.get("estimated_hours"),
+                "actual_hours": current_actual_hours + elapsed_hours,
+                "logged_time": current_logged_time + [time_entry]
+            }
+            
+            # Update task
+            await db.tasks.update_one(
+                {"id": task_id},
+                {
+                    "$set": {
+                        "time_tracking": new_time_tracking,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            response_data["time_logged"] = True
+            response_data["time_entry"] = time_entry
+            
+            # Log activity
+            await log_task_activity(
+                db, task_id, current_user.id, "timer_stopped_and_logged",
+                {"hours": round(elapsed_hours, 4), "description": time_description}
+            )
+        else:
+            response_data["time_logged"] = False
+            if elapsed_seconds < 60:
+                response_data["message"] += " (Session too short to auto-log)"
+            
+            # Log activity
+            await log_task_activity(
+                db, task_id, current_user.id, "timer_stopped", 
+                {"elapsed_hours": round(elapsed_hours, 4)}
+            )
+        
+        return response_data
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to stop timer: {str(e)}"
+        )
+
+@router.get("/timers/active", response_model=Dict[str, Any])
+async def get_active_timers(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get active timers for current user"""
+    try:
+        db = await get_database()
+        
+        # Find active timers for this user
+        timers = await db.timers.find({
+            "user_id": current_user.id,
+            "is_active": True
+        }).to_list(length=None)
+        
+        active_timers = []
+        for timer in timers:
+            # Calculate current elapsed time
+            elapsed_seconds = (datetime.utcnow() - timer["start_time"]).total_seconds()
+            
+            active_timers.append({
+                "id": timer["id"],
+                "task_id": timer["task_id"],
+                "start_time": timer["start_time"].isoformat(),
+                "elapsed_seconds": elapsed_seconds,
+                "elapsed_hours": round(elapsed_seconds / 3600, 4)
+            })
+        
+        return {
+            "success": True,
+            "active_timers": active_timers,
+            "count": len(active_timers)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get active timers: {str(e)}"
+        )
+
 # Helper function for activity logging
 async def log_task_activity(db, task_id: str, user_id: str, action: str, details: Dict):
     """Helper function to log task activity"""
