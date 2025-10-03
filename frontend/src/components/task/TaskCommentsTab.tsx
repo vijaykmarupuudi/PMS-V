@@ -98,12 +98,17 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
   newComment, 
   setNewComment, 
   onAddComment, 
-  availableUsers = [] 
+  availableUsers = [],
+  taskId,
+  tokens
 }) => {
   const [commentType, setCommentType] = useState<'comment' | 'note' | 'review'>('comment')
   const [filterType, setFilterType] = useState<'all' | 'comment' | 'note' | 'review' | 'resolved'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'comments' | 'history'>('comments')
+  const [conversationHistory, setConversationHistory] = useState<ConversationHistory | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   if (loading) {
     return (
