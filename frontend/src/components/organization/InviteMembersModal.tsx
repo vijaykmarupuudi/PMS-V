@@ -37,7 +37,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
     const isProd = import.meta.env.PROD || isPreview
     
     if (isProd || isPreview) {
-      return import.meta.env.VITE_PROD_API_URL || 'https://task-comments.preview.emergentagent.com'
+      return import.meta.env.VITE_PROD_API_URL || 'https://comment-debug.preview.emergentagent.com'
     }
     
     return import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8001'
