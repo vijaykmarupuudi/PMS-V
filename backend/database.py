@@ -146,6 +146,17 @@ async def create_indexes():
         ]
         await db.notifications.create_indexes(notification_indexes)
         
+        # Timers collection indexes
+        timer_indexes = [
+            IndexModel([("task_id", 1)]),
+            IndexModel([("user_id", 1)]),
+            IndexModel([("is_active", 1)]),
+            IndexModel([("start_time", -1)]),
+            IndexModel([("user_id", 1), ("is_active", 1)]),  # Compound index
+            IndexModel([("task_id", 1), ("user_id", 1), ("is_active", 1)]),  # Compound index
+        ]
+        await db.timers.create_indexes(timer_indexes)
+        
         logger.info("✅ Database indexes created successfully")
         
     except Exception as e:
