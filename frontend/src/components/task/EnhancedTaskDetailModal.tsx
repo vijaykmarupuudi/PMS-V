@@ -189,6 +189,7 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
       calculateTaskHealth()
       fetchTaskWithDetails()
       fetchAvailableUsers()
+      checkActiveTimer() // Check for any active timers
       if (activeTab === 'comments') {
         fetchComments()
       } else if (activeTab === 'activity') {
