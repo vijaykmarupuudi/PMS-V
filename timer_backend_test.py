@@ -105,11 +105,27 @@ class TimerAPITester:
             return False
 
     def test_get_tasks_for_timer(self) -> bool:
-        """Get tasks to find one for timer testing"""
+        """Get tasks to find one for timer testing or create one"""
         if not self.token:
             self.log("❌ Cannot get tasks - no authentication token")
             return False
-            
+        
+        # First try to get projects to find a project ID
+        success_proj, proj_response = self.run_test(
+            "Get Projects for Task Creation",
+            "GET",
+            "/api/projects",
+            200
+        )
+        
+        project_id = None
+        if success_proj:
+            projects = proj_response if isinstance(proj_response, list) else proj_response.get('projects', [])
+            if projects and len(projects) > 0:
+                project_id = projects[0].get('id')
+                self.log(f"   Found project for task creation: {project_id}")
+        
+        # Try to get existing tasks first
         success, response = self.run_test(
             "Get Tasks for Timer Testing",
             "GET",
@@ -126,15 +142,42 @@ class TimerAPITester:
                 
             if isinstance(tasks, list) and len(tasks) > 0:
                 self.test_task_id = tasks[0].get('id')
-                self.log(f"✅ Found task for timer testing: {self.test_task_id}")
+                self.log(f"✅ Found existing task for timer testing: {self.test_task_id}")
                 self.log(f"   Task title: {tasks[0].get('title', 'Unknown')}")
                 return True
+        
+        # If getting tasks failed or no tasks found, try to create a test task
+        if project_id:
+            self.log("   No existing tasks found, creating test task...")
+            task_data = {
+                "title": "Timer Test Task",
+                "description": "Test task for timer functionality testing",
+                "status": "in_progress",
+                "priority": "medium",
+                "type": "task",
+                "project_id": project_id
+            }
+            
+            success_create, create_response = self.run_test(
+                "Create Test Task for Timer",
+                "POST",
+                "/api/tasks/",
+                201,
+                data=task_data
+            )
+            
+            if success_create:
+                self.test_task_id = create_response.get('id')
+                self.log(f"✅ Created test task for timer testing: {self.test_task_id}")
+                return True
             else:
-                self.log("❌ No tasks found for timer testing")
-                return False
-        else:
-            self.log("❌ Failed to retrieve tasks")
-            return False
+                self.log("❌ Failed to create test task")
+        
+        # Last resort: use a hardcoded task ID if we know one exists
+        self.log("⚠️ Using fallback approach - will try with known task pattern")
+        # We'll set a placeholder and let the timer tests handle the error gracefully
+        self.test_task_id = "test-task-placeholder"
+        return False
 
     def test_get_active_timers(self) -> bool:
         """Test getting active timers"""
