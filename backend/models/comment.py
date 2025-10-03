@@ -58,8 +58,32 @@ class CommentBase(BaseModel):
     is_internal: bool = Field(default=False, description="Internal comment (not visible to external users)")
     is_pinned: bool = Field(default=False, description="Whether comment is pinned")
 
-class CommentCreate(BaseCreateModel, CommentBase):
+class CommentCreate(BaseCreateModel):
     """Comment creation model"""
+    content: str = Field(..., min_length=1, max_length=5000, description="Comment content")
+    type: CommentType = Field(default=CommentType.COMMENT, description="Comment type")
+    
+    # Entity relationship (polymorphic)
+    entity_type: EntityType = Field(..., description="Type of entity being commented on")
+    entity_id: str = Field(..., description="ID of the entity being commented on")
+    
+    # Optional authorship - will be set by backend from current user
+    author_id: Optional[str] = Field(None, description="Comment author user ID (optional, set by backend)")
+    
+    # Threading
+    parent_id: Optional[str] = Field(None, description="Parent comment ID for replies")
+    thread_id: Optional[str] = Field(None, description="Root thread ID")
+    
+    # Content features
+    mentions: List[CommentMention] = Field(default_factory=list, description="User mentions in comment")
+    attachments: List[str] = Field(default_factory=list, description="File attachment IDs")
+    
+    # Metadata
+    is_edited: bool = Field(default=False, description="Whether comment has been edited")
+    edit_history: List[Dict] = Field(default_factory=list, description="Edit history")
+    is_internal: bool = Field(default=False, description="Internal comment (not visible to external users)")
+    is_pinned: bool = Field(default=False, description="Whether comment is pinned")
+    
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -67,7 +91,6 @@ class CommentCreate(BaseCreateModel, CommentBase):
                 "type": "comment",
                 "entity_type": "task",
                 "entity_id": "task-123",
-                "author_id": "user-456",
                 "mentions": [
                     {
                         "user_id": "user-789",
