@@ -696,4 +696,295 @@ const CommentCard: React.FC<{
   )
 }
 
+// Conversation History View Component
+const ConversationHistoryView: React.FC<{
+  conversationHistory: ConversationHistory | null
+  loading: boolean
+  formatTimeAgo: (timestamp: string) => string
+  formatFullTime: (timestamp: string) => string
+  emojis: string[]
+  onRefresh: () => void
+}> = ({ conversationHistory, loading, formatTimeAgo, formatFullTime, emojis, onRefresh }) => {
+  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading conversation history...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!conversationHistory || conversationHistory.conversation_history.length === 0) {
+    return (
+      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+        <History className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+        <h4 className="text-lg font-medium text-gray-900 mb-2">No conversation history</h4>
+        <p className="text-gray-600 mb-4">Start the conversation by adding the first comment!</p>
+        <button
+          onClick={onRefresh}
+          className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Add First Comment</span>
+        </button>
+      </div>
+    )
+  }
+
+  const { conversation_history, statistics, participants } = conversationHistory
+
+  return (
+    <div className="space-y-6">
+      {/* Conversation Statistics */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <History className="h-5 w-5 mr-2 text-indigo-600" />
+            Conversation History
+          </h3>
+          <button
+            onClick={onRefresh}
+            className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="text-center bg-blue-50 rounded-lg p-3 border border-blue-100">
+            <div className="text-2xl font-bold text-blue-600">{statistics.total_messages}</div>
+            <div className="text-sm text-blue-700">Total Messages</div>
+          </div>
+          <div className="text-center bg-green-50 rounded-lg p-3 border border-green-100">
+            <div className="text-2xl font-bold text-green-600">{statistics.participants}</div>
+            <div className="text-sm text-green-700">Participants</div>
+          </div>
+          <div className="text-center bg-yellow-50 rounded-lg p-3 border border-yellow-100">
+            <div className="text-2xl font-bold text-yellow-600">{statistics.pinned_messages}</div>
+            <div className="text-sm text-yellow-700">Pinned</div>
+          </div>
+          <div className="text-center bg-purple-50 rounded-lg p-3 border border-purple-100">
+            <div className="text-2xl font-bold text-purple-600">{statistics.resolved_items}</div>
+            <div className="text-sm text-purple-700">Resolved</div>
+          </div>
+        </div>
+
+        {/* Timeline Info */}
+        <div className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+          <span className="flex items-center space-x-1">
+            <Calendar className="h-4 w-4" />
+            <span>
+              {statistics.first_message && `Started ${formatFullTime(statistics.first_message)}`}
+            </span>
+          </span>
+          <span className="flex items-center space-x-1">
+            <Clock className="h-4 w-4" />
+            <span>
+              {statistics.last_message && `Last activity ${formatTimeAgo(statistics.last_message)}`}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {/* Participants Overview */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h4 className="font-medium text-gray-900 mb-4 flex items-center">
+          <Users className="h-4 w-4 mr-2 text-blue-600" />
+          Conversation Participants ({participants.length})
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {participants.map((participant) => (
+            <div key={participant.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {participant.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 truncate">{participant.name}</div>
+                <div className="text-sm text-gray-500 truncate">{participant.email}</div>
+              </div>
+              <div className="text-sm text-gray-400 bg-white px-2 py-1 rounded border">
+                {participant.message_count} messages
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Chronological Message History */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h4 className="font-medium text-gray-900 mb-6 flex items-center">
+          <MessageSquare className="h-4 w-4 mr-2 text-green-600" />
+          Complete Message Timeline
+        </h4>
+        
+        <div className="space-y-6">
+          {conversation_history.map((entry, index) => (
+            <div key={entry.id} className="relative">
+              {/* Timeline connector */}
+              {index < conversation_history.length - 1 && (
+                <div className="absolute left-8 top-16 w-0.5 h-8 bg-gray-200"></div>
+              )}
+              
+              {/* Message Entry */}
+              <div className={`flex items-start space-x-4 p-4 rounded-xl border transition-all hover:shadow-sm ${
+                entry.is_pinned 
+                  ? 'bg-yellow-50 border-yellow-200' 
+                  : entry.type === 'review' 
+                    ? 'bg-purple-50 border-purple-200'
+                    : entry.type === 'note'
+                      ? 'bg-blue-50 border-blue-200'
+                      : 'bg-white border-gray-200'
+              }`}>
+                {/* Avatar */}
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${
+                  entry.type === 'review' 
+                    ? 'bg-gradient-to-br from-purple-500 to-purple-600' 
+                    : entry.type === 'note'
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                      : 'bg-gradient-to-br from-gray-500 to-gray-600'
+                }`}>
+                  {entry.author.initials}
+                </div>
+
+                {/* Message Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <span className="font-semibold text-gray-900">{entry.author.name}</span>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        entry.type === 'comment' 
+                          ? 'bg-gray-100 text-gray-800'
+                          : entry.type === 'note'
+                            ? 'bg-blue-100 text-blue-800'
+                            : entry.type === 'review'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-green-100 text-green-800'
+                      }`}>
+                        {entry.type === 'comment' ? '💬 Comment' :
+                         entry.type === 'note' ? '📝 Note' :
+                         entry.type === 'review' ? '👁️ Review' :
+                         entry.type}
+                      </span>
+                      {entry.is_pinned && (
+                        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center">
+                          <Pin className="h-3 w-3 mr-1" />
+                          Pinned
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500" title={formatFullTime(entry.timestamp)}>
+                      {formatTimeAgo(entry.timestamp)}
+                    </div>
+                  </div>
+
+                  {/* Message Content */}
+                  <div className="text-gray-800 mb-3 whitespace-pre-wrap leading-relaxed">
+                    {entry.content}
+                  </div>
+
+                  {/* Message Metadata */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      {entry.mentions.length > 0 && (
+                        <span className="flex items-center space-x-1">
+                          <User className="h-3 w-3" />
+                          <span>{entry.mentions.length} mention{entry.mentions.length > 1 ? 's' : ''}</span>
+                        </span>
+                      )}
+                      {entry.attachments.length > 0 && (
+                        <span className="flex items-center space-x-1">
+                          <Paperclip className="h-3 w-3" />
+                          <span>{entry.attachments.length} file{entry.attachments.length > 1 ? 's' : ''}</span>
+                        </span>
+                      )}
+                      {entry.is_edited && (
+                        <span className="flex items-center space-x-1 text-gray-400">
+                          <Edit className="h-3 w-3" />
+                          <span>Edited</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Reactions Display */}
+                    <div className="flex items-center space-x-2">
+                      {Object.entries(entry.reaction_summary).map(([emoji, data]) => (
+                        <button
+                          key={emoji}
+                          className={`flex items-center space-x-1 px-2 py-1 rounded-full text-sm transition-colors ${
+                            data.current_user_reacted
+                              ? 'bg-blue-100 border border-blue-300 text-blue-800'
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+                          }`}
+                          title={`${data.users.map(u => u.name).join(', ')} reacted with ${emoji}`}
+                        >
+                          <span>{emoji}</span>
+                          <span className="font-medium">{data.count}</span>
+                        </button>
+                      ))}
+                      
+                      {/* Add Reaction Button */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowReactionPicker(showReactionPicker === entry.id ? null : entry.id)}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                          <Smile className="h-4 w-4" />
+                        </button>
+                        
+                        {showReactionPicker === entry.id && (
+                          <div className="absolute right-0 bottom-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 p-2">
+                            <div className="grid grid-cols-5 gap-1">
+                              {emojis.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => {
+                                    // Handle emoji reaction
+                                    setShowReactionPicker(null)
+                                  }}
+                                  className="p-2 hover:bg-gray-100 rounded text-lg"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resolved Status */}
+                  {entry.is_resolved && (
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-sm">
+                      <div className="flex items-center text-green-800">
+                        <CheckSquare className="h-4 w-4 mr-2" />
+                        <span className="font-medium">Resolved</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* End of Timeline */}
+        <div className="flex items-center justify-center mt-6 pt-6 border-t border-gray-200">
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <Archive className="h-4 w-4" />
+            <span>End of conversation history</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default TaskCommentsTab
