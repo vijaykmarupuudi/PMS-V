@@ -626,7 +626,7 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
           await fetchTaskWithDetails()
         } else {
           const reason = data.message?.includes('short') ? ' (Session too short - minimum 1 minute required)' : ''
-          toast.info(`Timer stopped${reason}`)
+          toast(`Timer stopped${reason}`)
         }
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Failed to stop timer' }))
