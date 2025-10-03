@@ -512,6 +512,123 @@ async def resolve_comment(
             detail=f"Failed to resolve comment: {str(e)}"
         )
 
+@router.get("/conversation-history/{entity_type}/{entity_id}")
+async def get_conversation_history(
+    entity_type: EntityType,
+    entity_id: str,
+    include_user_details: bool = Query(True, description="Include user details in response"),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get complete conversation history for an entity with user details and chronological ordering"""
+    try:
+        db = await get_database()
+        
+        # Get all comments for the entity in chronological order
+        comments = await db.comments.find({
+            "entity_type": entity_type.value,
+            "entity_id": entity_id
+        }).sort("created_at", 1).to_list(length=None)
+        
+        # Get unique user IDs from comments
+        user_ids = list(set(comment["author_id"] for comment in comments))
+        
+        # Fetch user details if requested
+        user_details = {}
+        if include_user_details and user_ids:
+            users = await db.users.find({"id": {"$in": user_ids}}).to_list(length=None)
+            user_details = {user["id"]: user for user in users}
+        
+        # Build conversation history with enhanced data
+        conversation_history = []
+        for comment in comments:
+            author_info = user_details.get(comment["author_id"], {})
+            
+            # Build conversation entry
+            history_entry = {
+                "id": comment["id"],
+                "content": comment["content"],
+                "type": comment.get("type", "comment"),
+                "author": {
+                    "id": comment["author_id"],
+                    "name": f"{author_info.get('first_name', 'Unknown')} {author_info.get('last_name', 'User')}".strip(),
+                    "email": author_info.get("email", "unknown@example.com"),
+                    "avatar_url": author_info.get("avatar_url"),
+                    "initials": f"{author_info.get('first_name', 'U')[0]}{author_info.get('last_name', 'U')[0]}"
+                },
+                "timestamp": comment["created_at"],
+                "formatted_time": comment["created_at"],  # Will be formatted on frontend
+                "reactions": comment.get("reactions", []),
+                "reaction_summary": {},  # Will be populated below
+                "mentions": comment.get("mentions", []),
+                "attachments": comment.get("attachments", []),
+                "is_edited": comment.get("is_edited", False),
+                "is_pinned": comment.get("is_pinned", False),
+                "is_resolved": comment.get("is_resolved", False),
+                "parent_id": comment.get("parent_id"),
+                "thread_id": comment.get("thread_id"),
+                "reply_count": comment.get("reply_count", 0),
+                "edit_history": comment.get("edit_history", [])
+            }
+            
+            # Build reaction summary (group by emoji)
+            reactions = comment.get("reactions", [])
+            reaction_summary = {}
+            for reaction in reactions:
+                emoji = reaction["emoji"]
+                if emoji not in reaction_summary:
+                    reaction_summary[emoji] = {
+                        "count": 0,
+                        "users": [],
+                        "current_user_reacted": False
+                    }
+                reaction_summary[emoji]["count"] += 1
+                reaction_summary[emoji]["users"].append({
+                    "user_id": reaction["user_id"],
+                    "name": user_details.get(reaction["user_id"], {}).get("first_name", "Unknown")
+                })
+                if reaction["user_id"] == current_user.id:
+                    reaction_summary[emoji]["current_user_reacted"] = True
+            
+            history_entry["reaction_summary"] = reaction_summary
+            conversation_history.append(history_entry)
+        
+        # Get conversation statistics
+        stats = {
+            "total_messages": len(conversation_history),
+            "participants": len(user_ids),
+            "message_types": {
+                "comments": len([c for c in comments if c.get("type") == "comment"]),
+                "notes": len([c for c in comments if c.get("type") == "note"]),
+                "reviews": len([c for c in comments if c.get("type") == "review"]),
+                "suggestions": len([c for c in comments if c.get("type") == "suggestion"])
+            },
+            "first_message": comments[0]["created_at"] if comments else None,
+            "last_message": comments[-1]["created_at"] if comments else None,
+            "pinned_messages": len([c for c in comments if c.get("is_pinned")]),
+            "resolved_items": len([c for c in comments if c.get("is_resolved")])
+        }
+        
+        return {
+            "conversation_history": conversation_history,
+            "statistics": stats,
+            "participants": [
+                {
+                    "id": user_id,
+                    "name": f"{user_details.get(user_id, {}).get('first_name', 'Unknown')} {user_details.get(user_id, {}).get('last_name', 'User')}".strip(),
+                    "email": user_details.get(user_id, {}).get("email", "unknown@example.com"),
+                    "avatar_url": user_details.get(user_id, {}).get("avatar_url"),
+                    "message_count": len([c for c in comments if c["author_id"] == user_id])
+                }
+                for user_id in user_ids
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get conversation history: {str(e)}"
+        )
+
 @router.get("/search", response_model=List[CommentSummary])
 async def search_comments(
     query: str = Query(..., min_length=2, description="Search query"),
