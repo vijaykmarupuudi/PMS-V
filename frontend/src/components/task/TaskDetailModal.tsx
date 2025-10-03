@@ -531,6 +531,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               setNewComment={setNewComment}
               onAddComment={handleAddComment}
               availableUsers={availableUsers}
+              taskId={task?.id}
+              tokens={tokens}
             />
           )}
           
