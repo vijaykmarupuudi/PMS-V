@@ -430,7 +430,7 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
             </div>
           </>
         )}
-      </div>
+          </div>
         </>
       ) : (
         /* Conversation History View */
