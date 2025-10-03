@@ -496,56 +496,79 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
     }
   }
 
-  const handleStartTimer = () => {
-    setIsTimerRunning(true)
-    setCurrentTimerStart(new Date())
-    setTimerElapsed(0)
-    toast.success('Timer started!')
-  }
-
-  const handleStopTimer = async () => {
-    if (!currentTimerStart) return
-    
-    const totalSeconds = Math.floor((Date.now() - currentTimerStart.getTime()) / 1000)
-    const hours = (totalSeconds / 3600).toFixed(2)
-    
-    // Stop the timer first
-    setIsTimerRunning(false)
-    setCurrentTimerStart(null)
-    setTimerElapsed(0)
-    
-    // Only log time if timer ran for more than 1 minute
-    if (totalSeconds < 60) {
-      toast.info('Timer stopped. Session too short to log automatically.')
-      return
-    }
+  const handleStartTimer = async () => {
+    if (!task || !tokens?.access_token) return
     
     try {
-      // Auto-log the timed session
-      const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/time/log?hours=${hours}&description=${encodeURIComponent('Timed work session')}`, {
+      const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/timer/start`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${tokens?.access_token}`,
+          'Authorization': `Bearer ${tokens.access_token}`,
           'Content-Type': 'application/json'
         }
       })
       
       if (response.ok) {
-        toast.success(`Timer stopped! Logged ${hours} hours automatically.`)
-        // Refresh task data to show updated time tracking
-        await fetchTaskWithDetails()
+        const data = await response.json()
+        setIsTimerRunning(true)
+        setCurrentTimerStart(new Date(data.timer.start_time))
+        setTimerElapsed(0)
+        toast.success('Timer started!')
       } else {
-        // If auto-log fails, fill the form for manual submission
-        setTimeLogHours(hours)
-        setTimeLogDescription('Timed work session')
-        toast.info(`Timer stopped (${formatTime(totalSeconds * 1000)}). Please submit manually.`)
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to start timer' }))
+        toast.error(`Failed to start timer: ${errorData.detail}`)
       }
     } catch (error) {
-      console.error('Error auto-logging timer:', error)
-      // If auto-log fails, fill the form for manual submission
-      setTimeLogHours(hours)
-      setTimeLogDescription('Timed work session')
-      toast.info(`Timer stopped (${formatTime(totalSeconds * 1000)}). Please submit manually.`)
+      console.error('Error starting timer:', error)
+      toast.error('Failed to start timer - network error')
+    }
+  }
+
+  const handleStopTimer = async () => {
+    if (!task || !tokens?.access_token) return
+    
+    try {
+      const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/timer/stop?auto_log=true&description=${encodeURIComponent('Timed work session')}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Stop frontend timer
+        setIsTimerRunning(false)
+        setCurrentTimerStart(null)
+        setTimerElapsed(0)
+        
+        if (data.time_logged) {
+          const hours = data.time_entry.hours
+          toast.success(`Timer stopped! Logged ${hours} hours automatically.`)
+          // Refresh task data to show updated time tracking
+          await fetchTaskWithDetails()
+        } else {
+          toast.info(data.message)
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to stop timer' }))
+        toast.error(`Failed to stop timer: ${errorData.detail}`)
+        
+        // Fallback: just stop the frontend timer
+        setIsTimerRunning(false)
+        setCurrentTimerStart(null)
+        setTimerElapsed(0)
+      }
+    } catch (error) {
+      console.error('Error stopping timer:', error)
+      toast.error('Failed to stop timer - network error')
+      
+      // Fallback: just stop the frontend timer
+      setIsTimerRunning(false)
+      setCurrentTimerStart(null)
+      setTimerElapsed(0)
     }
   }
 
