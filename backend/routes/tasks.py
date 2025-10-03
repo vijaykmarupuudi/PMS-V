@@ -191,7 +191,7 @@ async def get_tasks(
             detail=f"Failed to get tasks: {str(e)}"
         )
 
-@router.get("/{task_id}", response_model=Task)
+@router.get("/{task_id}", response_model=Dict[str, Any])
 async def get_task(
     task_id: str,
     current_user: User = Depends(get_current_active_user)
@@ -207,7 +207,10 @@ async def get_task(
                 detail="Task not found"
             )
         
-        return Task(**task)
+        # Clean task data to fix validation issues
+        cleaned_task = clean_task_data(task)
+        
+        return cleaned_task
         
     except Exception as e:
         if isinstance(e, HTTPException):
