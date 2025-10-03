@@ -547,6 +547,17 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
   const handleLogTime = async () => {
     if (!task || !timeLogHours || !tokens?.access_token) return
     
+    const parsedHours = parseFloat(timeLogHours)
+    if (isNaN(parsedHours) || parsedHours <= 0) {
+      toast.error('Please enter valid hours greater than 0')
+      return
+    }
+
+    if (!timeLogDescription.trim()) {
+      toast.error('Please provide a work description')
+      return
+    }
+    
     try {
       const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/time/log?hours=${timeLogHours}&description=${encodeURIComponent(timeLogDescription)}`, {
         method: 'POST',
@@ -560,11 +571,16 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
         setTimeLogHours('')
         setTimeLogDescription('')
         toast.success('Time logged successfully!')
-        // Refresh task data if needed
+        
+        // Refresh task data to show updated time tracking
+        await fetchTaskWithDetails()
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
+        toast.error(`Failed to log time: ${errorData.detail || 'Server error'}`)
       }
     } catch (error) {
       console.error('Error logging time:', error)
-      toast.error('Failed to log time')
+      toast.error('Failed to log time - network error')
     }
   }
 
