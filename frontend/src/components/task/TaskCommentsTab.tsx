@@ -431,6 +431,18 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
           </>
         )}
       </div>
+        </>
+      ) : (
+        /* Conversation History View */
+        <ConversationHistoryView
+          conversationHistory={conversationHistory}
+          loading={historyLoading}
+          formatTimeAgo={formatTimeAgo}
+          formatFullTime={formatFullTime}
+          emojis={emojis}
+          onRefresh={fetchConversationHistory}
+        />
+      )}
     </div>
   )
 }
