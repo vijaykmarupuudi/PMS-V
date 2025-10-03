@@ -212,10 +212,38 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
     <div className="p-6">
       {/* Enhanced Comments Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 mb-6 border border-blue-200">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <MessageSquare className="h-6 w-6 mr-3 text-blue-600" />
-          Comments & Discussion
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+            <MessageSquare className="h-6 w-6 mr-3 text-blue-600" />
+            Comments & Discussion
+          </h3>
+          
+          {/* View Toggle */}
+          <div className="flex items-center bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+            <button
+              onClick={() => setActiveView('comments')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeView === 'comments'
+                  ? 'bg-blue-100 text-blue-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Comments</span>
+            </button>
+            <button
+              onClick={() => setActiveView('history')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeView === 'history'
+                  ? 'bg-blue-100 text-blue-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              <History className="h-4 w-4" />
+              <span>History</span>
+            </button>
+          </div>
+        </div>
         
         {/* Comments Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
