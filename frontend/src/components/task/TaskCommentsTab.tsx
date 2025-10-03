@@ -38,6 +38,49 @@ interface Comment {
   updated_at: string
 }
 
+interface ConversationHistoryEntry {
+  id: string
+  content: string
+  type: string
+  author: {
+    id: string
+    name: string
+    email: string
+    avatar_url?: string
+    initials: string
+  }
+  timestamp: string
+  formatted_time: string
+  reactions: any[]
+  reaction_summary: Record<string, {
+    count: number
+    users: any[]
+    current_user_reacted: boolean
+  }>
+  mentions: any[]
+  attachments: string[]
+  is_edited: boolean
+  is_pinned: boolean
+  is_resolved: boolean
+  parent_id?: string
+  thread_id?: string
+  reply_count: number
+}
+
+interface ConversationHistory {
+  conversation_history: ConversationHistoryEntry[]
+  statistics: {
+    total_messages: number
+    participants: number
+    message_types: Record<string, number>
+    first_message?: string
+    last_message?: string
+    pinned_messages: number
+    resolved_items: number
+  }
+  participants: any[]
+}
+
 interface TaskCommentsTabProps {
   comments: Comment[]
   loading: boolean
@@ -45,6 +88,8 @@ interface TaskCommentsTabProps {
   setNewComment: (value: string) => void
   onAddComment: () => void
   availableUsers?: any[]
+  taskId?: string
+  tokens?: any
 }
 
 export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({ 
