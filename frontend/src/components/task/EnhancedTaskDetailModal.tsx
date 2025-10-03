@@ -313,6 +313,34 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
     }
   }
 
+  const checkActiveTimer = async () => {
+    if (!tokens?.access_token) return
+    
+    try {
+      const response = await fetch(`${getApiUrlDynamic()}/api/tasks/timers/active`, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        const activeTimer = data.active_timers.find((timer: any) => timer.task_id === task?.id)
+        
+        if (activeTimer) {
+          // Restore timer state
+          setIsTimerRunning(true)
+          setCurrentTimerStart(new Date(activeTimer.start_time))
+          setTimerElapsed(activeTimer.elapsed_seconds * 1000) // Convert to milliseconds
+          console.log('Restored active timer for task:', task?.id)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking active timer:', error)
+    }
+  }
+
   const fetchRelatedTasks = async () => {
     if (!task || !tokens?.access_token) return
     
