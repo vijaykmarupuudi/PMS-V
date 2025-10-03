@@ -570,6 +570,8 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
     if (!task || !tokens?.access_token) return
     
     try {
+      console.log('Stopping timer for task:', task.id, 'API URL:', `${getApiUrlDynamic()}/api/tasks/${task.id}/timer/stop`)
+      
       const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/timer/stop?auto_log=true&description=${encodeURIComponent('Timed work session')}`, {
         method: 'POST',
         headers: {
@@ -578,8 +580,11 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
         }
       })
       
+      console.log('Timer stop response status:', response.status, response.ok)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Timer stop response data:', data)
         
         // Stop frontend timer
         setIsTimerRunning(false)
@@ -588,14 +593,16 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
         
         if (data.time_logged) {
           const hours = data.time_entry.hours
-          toast.success(`Timer stopped! Logged ${hours} hours automatically.`)
+          toast.success(`Timer stopped! Logged ${formatHours(hours)}h automatically to history.`)
           // Refresh task data to show updated time tracking
           await fetchTaskWithDetails()
         } else {
-          toast.info(data.message)
+          const reason = data.message?.includes('short') ? ' (Session too short - minimum 1 minute required)' : ''
+          toast.info(`Timer stopped${reason}`)
         }
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Failed to stop timer' }))
+        console.error('Timer stop error response:', errorData)
         toast.error(`Failed to stop timer: ${errorData.detail}`)
         
         // Fallback: just stop the frontend timer
@@ -604,10 +611,10 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
         setTimerElapsed(0)
       }
     } catch (error) {
-      console.error('Error stopping timer:', error)
-      toast.error('Failed to stop timer - network error')
+      console.error('Error stopping timer - network error details:', error)
+      toast.error(`Failed to stop timer: ${error.message || 'Network error'}`)
       
-      // Fallback: just stop the frontend timer
+      // Fallback: just stop the frontend timer anyway
       setIsTimerRunning(false)
       setCurrentTimerStart(null)
       setTimerElapsed(0)
