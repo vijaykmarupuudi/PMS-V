@@ -1059,6 +1059,8 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
               setNewComment={setNewComment}
               onAddComment={handleAddComment}
               availableUsers={availableUsers}
+              taskId={task?.id}
+              tokens={tokens}
             />
           )}
           
