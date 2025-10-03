@@ -628,7 +628,47 @@ async def move_task_on_board(
 
 # Time Tracking Endpoints
 
-@router.post("/{task_id}/time/log", response_model=Task)
+def clean_task_data(task_data: dict) -> dict:
+    """Clean task data to fix validation issues"""
+    cleaned_task = dict(task_data)
+    
+    # Fix dependencies format - convert strings to proper TaskDependency format
+    if "dependencies" in cleaned_task and cleaned_task["dependencies"]:
+        fixed_dependencies = []
+        for dep in cleaned_task["dependencies"]:
+            if isinstance(dep, str):
+                # Convert string ID to TaskDependency format
+                fixed_dependencies.append({
+                    "task_id": dep,
+                    "dependency_type": "blocks"
+                })
+            elif isinstance(dep, dict):
+                fixed_dependencies.append(dep)
+        cleaned_task["dependencies"] = fixed_dependencies
+    
+    # Ensure time_tracking has proper structure
+    if "time_tracking" not in cleaned_task or not cleaned_task["time_tracking"]:
+        cleaned_task["time_tracking"] = {
+            "estimated_hours": None,
+            "actual_hours": 0.0,
+            "logged_time": []
+        }
+    elif not isinstance(cleaned_task["time_tracking"], dict):
+        cleaned_task["time_tracking"] = {
+            "estimated_hours": None,
+            "actual_hours": 0.0,
+            "logged_time": []
+        }
+    
+    # Ensure required fields exist with safe defaults
+    cleaned_task.setdefault("progress_percentage", 0.0)
+    cleaned_task.setdefault("subtask_count", 0)
+    cleaned_task.setdefault("comment_count", 0)
+    cleaned_task.setdefault("attachment_count", 0)
+    
+    return cleaned_task
+
+@router.post("/{task_id}/time/log", response_model=Dict[str, Any])
 async def log_time_entry(
     task_id: str,
     hours: float = Query(..., gt=0, description="Hours to log"),
@@ -687,9 +727,16 @@ async def log_time_entry(
             {"hours": hours, "description": description}
         )
         
-        # Get updated task
+        # Get updated task with cleaned data
         updated_task = await db.tasks.find_one({"id": task_id})
-        return Task(**updated_task)
+        cleaned_task = clean_task_data(updated_task)
+        
+        return {
+            "success": True,
+            "message": "Time logged successfully",
+            "task": cleaned_task,
+            "time_entry": time_entry
+        }
         
     except Exception as e:
         if isinstance(e, HTTPException):
