@@ -361,7 +361,7 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
           {/* Comments List */}
           <div className="space-y-4">
             {sortedComments.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
             <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-300" />
             <h4 className="text-lg font-medium text-gray-900 mb-2">
               {searchTerm || filterType !== 'all' ? 'No matching comments' : 'Start the conversation!'}
