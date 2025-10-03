@@ -503,16 +503,50 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
     toast.success('Timer started!')
   }
 
-  const handleStopTimer = () => {
-    if (currentTimerStart) {
-      const totalSeconds = Math.floor((Date.now() - currentTimerStart.getTime()) / 1000)
-      const hours = formatHours(totalSeconds / 3600)
-      setTimeLogHours(hours)
-      setTimeLogDescription('Timed work session')
-    }
+  const handleStopTimer = async () => {
+    if (!currentTimerStart) return
+    
+    const totalSeconds = Math.floor((Date.now() - currentTimerStart.getTime()) / 1000)
+    const hours = (totalSeconds / 3600).toFixed(2)
+    
+    // Stop the timer first
     setIsTimerRunning(false)
     setCurrentTimerStart(null)
-    toast.info('Timer stopped. Time logged to form.')
+    setTimerElapsed(0)
+    
+    // Only log time if timer ran for more than 1 minute
+    if (totalSeconds < 60) {
+      toast.info('Timer stopped. Session too short to log automatically.')
+      return
+    }
+    
+    try {
+      // Auto-log the timed session
+      const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/time/log?hours=${hours}&description=${encodeURIComponent('Timed work session')}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokens?.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        toast.success(`Timer stopped! Logged ${hours} hours automatically.`)
+        // Refresh task data to show updated time tracking
+        await fetchTaskWithDetails()
+      } else {
+        // If auto-log fails, fill the form for manual submission
+        setTimeLogHours(hours)
+        setTimeLogDescription('Timed work session')
+        toast.info(`Timer stopped (${formatTime(totalSeconds * 1000)}). Please submit manually.`)
+      }
+    } catch (error) {
+      console.error('Error auto-logging timer:', error)
+      // If auto-log fails, fill the form for manual submission
+      setTimeLogHours(hours)
+      setTimeLogDescription('Timed work session')
+      toast.info(`Timer stopped (${formatTime(totalSeconds * 1000)}). Please submit manually.`)
+    }
   }
 
   const handleAddComment = async () => {
