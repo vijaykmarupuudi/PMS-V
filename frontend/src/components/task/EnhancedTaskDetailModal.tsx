@@ -183,13 +183,27 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
   useEffect(() => {
     if (task && isOpen) {
       console.log('EnhancedTaskDetailModal: Opening modal for task:', task.id, task.title)
+      
+      // Reset modal state
       setEditData({})
       setIsEditing(false)
       setValidationErrors({})
+      
+      // Initialize timer state to clean slate
+      setIsTimerRunning(false)
+      setCurrentTimerStart(null)
+      setTimerElapsed(0)
+      
+      // Fetch initial data
       calculateTaskHealth()
       fetchTaskWithDetails()
       fetchAvailableUsers()
-      checkActiveTimer() // Check for any active timers
+      
+      // Check for active timers after a brief delay to ensure state is clean
+      setTimeout(() => {
+        checkActiveTimer()
+      }, 100)
+      
       if (activeTab === 'comments') {
         fetchComments()
       } else if (activeTab === 'activity') {
