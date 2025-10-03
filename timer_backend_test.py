@@ -214,8 +214,12 @@ class TimerAPITester:
 
     def test_start_timer(self) -> bool:
         """Test starting a timer"""
-        if not self.token or not self.test_task_id:
-            self.log("❌ Cannot test timer start - missing token or task ID")
+        if not self.token:
+            self.log("❌ Cannot test timer start - missing authentication token")
+            return False
+            
+        if not self.test_task_id or self.test_task_id == "test-task-placeholder":
+            self.log("❌ Cannot test timer start - no valid task ID available")
             return False
             
         success, response = self.run_test(
