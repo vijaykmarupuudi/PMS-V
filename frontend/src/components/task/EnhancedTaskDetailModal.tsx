@@ -314,7 +314,7 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
   }
 
   const checkActiveTimer = async () => {
-    if (!tokens?.access_token) return
+    if (!tokens?.access_token || !task?.id) return
     
     try {
       const response = await fetch(`${getApiUrlDynamic()}/api/tasks/timers/active`, {
@@ -329,15 +329,29 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
         const activeTimer = data.active_timers.find((timer: any) => timer.task_id === task?.id)
         
         if (activeTimer) {
-          // Restore timer state
+          // Restore timer state - calculate elapsed time properly
+          const startTime = new Date(activeTimer.start_time)
+          const currentTime = new Date()
+          const elapsedMs = currentTime.getTime() - startTime.getTime()
+          
           setIsTimerRunning(true)
-          setCurrentTimerStart(new Date(activeTimer.start_time))
-          setTimerElapsed(activeTimer.elapsed_seconds * 1000) // Convert to milliseconds
-          console.log('Restored active timer for task:', task?.id)
+          setCurrentTimerStart(startTime)
+          setTimerElapsed(elapsedMs)
+          
+          console.log('✅ Restored active timer for task:', task?.id, 'elapsed:', formatTime(elapsedMs))
+        } else {
+          // No active timer for this task - ensure clean state
+          setIsTimerRunning(false)
+          setCurrentTimerStart(null)
+          setTimerElapsed(0)
         }
       }
     } catch (error) {
       console.error('Error checking active timer:', error)
+      // Ensure clean state on error
+      setIsTimerRunning(false)
+      setCurrentTimerStart(null)
+      setTimerElapsed(0)
     }
   }
 
