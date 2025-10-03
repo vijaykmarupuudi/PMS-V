@@ -528,7 +528,13 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
   const handleStartTimer = async () => {
     if (!task || !tokens?.access_token) return
     
+    // Reset timer state immediately for better UX
+    setTimerElapsed(0)
+    setIsTimerRunning(false)
+    
     try {
+      console.log('Starting timer for task:', task.id, 'API URL:', `${getApiUrlDynamic()}/api/tasks/${task.id}/timer/start`)
+      
       const response = await fetch(`${getApiUrlDynamic()}/api/tasks/${task.id}/timer/start`, {
         method: 'POST',
         headers: {
@@ -537,19 +543,26 @@ export const EnhancedTaskDetailModal: React.FC<EnhancedTaskDetailModalProps> = (
         }
       })
       
+      console.log('Timer start response status:', response.status, response.ok)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Timer start response data:', data)
+        
+        // Set timer state - timer starts from 0:00
         setIsTimerRunning(true)
-        setCurrentTimerStart(new Date(data.timer.start_time))
-        setTimerElapsed(0)
-        toast.success('Timer started!')
+        setCurrentTimerStart(new Date()) // Use current time for consistent counting
+        setTimerElapsed(0) // Always start from 0
+        
+        toast.success('Timer started from 0:00!')
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Failed to start timer' }))
+        console.error('Timer start error response:', errorData)
         toast.error(`Failed to start timer: ${errorData.detail}`)
       }
     } catch (error) {
       console.error('Error starting timer:', error)
-      toast.error('Failed to start timer - network error')
+      toast.error(`Failed to start timer: ${error.message || 'Network error'}`)
     }
   }
 
