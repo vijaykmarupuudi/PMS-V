@@ -111,8 +111,8 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
   const [conversationHistory, setConversationHistory] = useState<ConversationHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  // Filter and search comments
-  const filteredComments = comments.filter(comment => {
+  // Filter and search comments - only process if not loading
+  const filteredComments = loading ? [] : comments.filter(comment => {
     const matchesType = filterType === 'all' || 
       (filterType === 'resolved' ? comment.is_resolved : comment.type === filterType)
     const matchesSearch = !searchTerm || 
@@ -121,20 +121,20 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
   })
 
   // Sort comments by creation date (newest first, but pinned first)
-  const sortedComments = [...filteredComments].sort((a, b) => {
+  const sortedComments = loading ? [] : [...filteredComments].sort((a, b) => {
     if (a.is_pinned && !b.is_pinned) return -1
     if (!a.is_pinned && b.is_pinned) return 1
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 
-  // Group comments by type for summary
-  const commentSummary = comments.reduce((acc, comment) => {
+  // Group comments by type for summary - only process if not loading
+  const commentSummary = loading ? {} : comments.reduce((acc, comment) => {
     acc[comment.type] = (acc[comment.type] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 
-  const resolvedCount = comments.filter(c => c.is_resolved).length
-  const pinnedCount = comments.filter(c => c.is_pinned).length
+  const resolvedCount = loading ? 0 : comments.filter(c => c.is_resolved).length
+  const pinnedCount = loading ? 0 : comments.filter(c => c.is_pinned).length
 
   const emojis = ['👍', '👎', '❤️', '😄', '😮', '😢', '😡', '🎉', '🚀', '👀']
 
