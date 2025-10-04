@@ -111,17 +111,6 @@ export const TaskCommentsTab: React.FC<TaskCommentsTabProps> = ({
   const [conversationHistory, setConversationHistory] = useState<ConversationHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading comments...</p>
-        </div>
-      </div>
-    )
-  }
-
   // Filter and search comments
   const filteredComments = comments.filter(comment => {
     const matchesType = filterType === 'all' || 
